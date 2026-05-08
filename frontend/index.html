@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ElectroEnergy Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --chambray: #365480; --old-gold: #CBC231; --citron: #94AA1F; }
+        body { background-color: #f1f4f8; color: #3F452D; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <nav class="bg-[#365480] p-6 border-b-4 border-[#CBC231] text-white">
+        <h1 class="text-2xl font-bold">ElectroEnergy <span class="text-[#CBC231]">Intelligence</span></h1>
+    </nav>
+    <main class="max-w-6xl mx-auto p-10">
+        <div id="news-feed" class="space-y-6 text-left">
+            <p class="animate-pulse">Sincronizando con el servidor...</p>
+        </div>
+    </main>
+    <script>
+        // Aquí conectamos con tu backend cuando lo despliegues
+        async function loadNews() {
+            try {
+                const res = await fetch('http://localhost:3000/api/news');
+                const data = await res.json();
+                const feed = document.getElementById('news-feed');
+                feed.innerHTML = data.news.map(n => `
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-[#CBC231]">
+                        <h3 class="font-bold text-xl">${n.title}</h3>
+                        <p class="text-sm text-gray-500">${n.summary}</p>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('news-feed').innerText = "Inicia el servidor backend para ver noticias.";
+            }
+        }
+        loadNews();
+    </script>
+</body>
+</html>
