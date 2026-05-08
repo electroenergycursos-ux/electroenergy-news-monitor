@@ -32,22 +32,29 @@ app.get('/api/intelligence', async (req, res) => {
           "ai_summary": "Resumen técnico de 3 líneas."
         }`;
 
-        // URL actualizada a v1 para evitar el error 404
+        // URL actualizada a v1 para evitar errores de conexión
         const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
         
         const response = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: "Genera reporte energético detallado para Venezuela hoy." }] }],
             systemInstruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+            generationConfig: { 
+                responseMimeType: "application/json", 
+                temperature: 0.1 
+            }
         });
 
         // Envío de datos procesados al monitor
-        res.json(JSON.parse(response.data.candidates[0].content.parts[0].text));
+        const rawContent = response.data.candidates[0].content.parts[0].text;
+        res.json(JSON.parse(rawContent));
         
     } catch (error) {
         console.error("Error en el servidor:", error.message);
-        res.status(500).json({ error: "Error al sincronizar inteligencia energética." });
+        res.status(500).json({ 
+            error: "Error al sincronizar inteligencia energética.",
+            details: error.message 
+        });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor ElectroEnergy activo en puerto ${PORT}`));
