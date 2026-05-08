@@ -1,21 +1,20 @@
 import os
+import json
 import feedparser
-import google.generativeai as genai
 import psycopg2
-from psycopg2.extras import RealDictCursor
+import google.generativeai as genai
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import json
 
-# 1. Cargar configuración segura
+# 1. CONFIGURACIÓN Y SEGURIDAD
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 DB_URL = os.getenv("SUPABASE_DB_URL")
 
 app = FastAPI()
 
-# Permitir que tu Dashboard de React lea los datos
+# Permitir acceso desde tu Dashboard de React
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,63 +22,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Configurar la IA (Gemini 3 Flash para velocidad)
+# Configurar el modelo de IA
 model = genai.GenerativeModel('gemini-1.5-flash')
 
+# 2. MOTOR DE INTELIGENCIA (IA)
 def analizar_noticia(titular):
     prompt = f"""
-    Analiza este titular de energía sobre Venezuela y responde SOLO en formato JSON:
+    Eres un analista experto en energía y riesgo geopolítico en Venezuela.
+    Analiza el siguiente titular y responde ESTRICTAMENTE en formato JSON.
+    
     Titular: "{titular}"
     
-    JSON:
+    JSON esperado:
     {{
         "categoria": "Petróleo" | "Gas" | "Eléctrico" | "Sanciones" | "Geopolítica",
         "impacto": un número del 1 al 100,
-        "resumen": "una frase corta"
+        "resumen_ejecutivo": "Máximo 15 palabras"
     }}
     """
     try:
         response = model.generate_content(prompt)
-        # Limpiar la respuesta para obtener el JSON puro
+        # Limpieza de formato Markdown en la respuesta de la IA
         clean_json = response.text.replace('```json', '').replace('
 ```', '').strip()
         return json.loads(clean_json)
-    except:
-        return {"categoria": "Otros", "impacto": 50, "resumen": "Error en análisis"}
+    except Exception as e:
+        print(f"Error analizando con IA: {e}")
+        return {
+            "categoria": "Otros",
+            "impacto": 50,
+            "resumen_ejecutivo": "No se pudo analizar la noticia."
+        }
+
+# 3. ENDPOINTS DE LA API
+@app.get("/")
+def home():
+    return {"status": "online", "monitor": "Venezuela Energy Intelligence"}
 
 @app.get("/update-monitor")
 def update_monitor():
-    # 3. Leer fuentes de Reuters y Bloomberg
+    # Fuentes estratégicas: Reuters y Bloomberg
     feeds = [
         "https://www.reutersagency.com/feed/?best-topics=energy&format=xml",
         "http://feeds.bloomberg.com/energy/news.rss"
     ]
     
-    results = []
-    conn = psycopg2.connect(DB_URL)
-    cur = conn.cursor()
+    news_processed = 0
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
 
-    for url in feeds:
-        f = feedparser.parse(url)
-        for entry in f.entries[:5]:
-            # Solo procesar noticias relacionadas con Venezuela o PDVSA
-            if any(x in entry.title.upper() for x in ["VENEZUELA", "PDVSA", "OIL", "CITGO", "GURI"]):
-                analisis = analizar_noticia(entry.title)
-                
-                # 4. Guardar en Supabase (Evita duplicados con ON CONFLICT)
-                cur.execute("""
-                    INSERT INTO energy_intel (title, category, impact_score, summary, source_url)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (source_url) DO NOTHING
-                """, (entry.title, analisis['categoria'], analisis['impacto'], analisis['resumen'], entry.link))
-                
-                results.append({"title": entry.title, "intel": analisis})
-    
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"status": "Monitor Actualizado", "news_processed": len(results)}
+        for url in feeds:
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:10]: # Analizamos las 10 más recientes
+                # Filtro de relevancia técnica (Venezuela/PDVSA/Guri)
+                if any(x in entry.title.upper() for x in ["VENEZUELA", "PDVSA", "OIL", "CITGO", "GURI", "GAS"]):
+                    
+                    # Pasar por la IA
+                    analisis = analizar_noticia(entry.title)
+                    
+                    # Guardar en Supabase (Evita duplicados por URL)
+                    cur.execute("""
+                        INSERT INTO energy_intel (title, category, impact_score, summary, source_url)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (source_url) DO NOTHING
+                    """, (
+                        entry.title, 
+                        analisis['categoria'], 
+                        analisis['impacto'], 
+                        analisis['resumen_ejecutivo'], 
+                        entry.link
+                    ))
+                    news_processed += 1
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "Success", "processed_count": news_processed}
+        
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
 
-@app.get("/")
-def home():
-    return {"message": "Venezuela Energy Monitor API is Online"}
+@app.get("/get-intel")
+def get_intel():
+    # Este endpoint servirá los datos a tu Dashboard de React
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM energy_intel ORDER BY created_at DESC LIMIT 20")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return {"data": rows}
+    except Exception as e:
+        return {"error": str(e)}
