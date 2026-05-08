@@ -1,10 +1,10 @@
 import streamlit as st
-import google.generativeai as genai
+import requests
+import json
 
 # Configuración de Identidad Corporativa - ElectroEnergy Group LLC
 st.set_page_config(page_title="ElectroEnergy Intelligence", layout="wide", page_icon="⚡")
 
-# Estilo visual profesional
 st.markdown("""
     <style>
     .main-title { font-size: 36px; font-weight: bold; color: #1E3A8A; }
@@ -13,45 +13,47 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">⚡ ElectroEnergy Group LLC</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Venezuela Energy Sector Monitor - Inteligencia de Campo</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Monitor de Inteligencia Energética - Conexión Directa v1</div>', unsafe_allow_html=True)
 
-# Panel Lateral para Autenticación
+# Panel Lateral
 st.sidebar.header("Configuración de Acceso")
 api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password")
 
 if api_key:
-    try:
-        # SOLUCIÓN AL ERROR 404: Forzamos el uso de la API v1 estable y transporte REST
-        genai.configure(api_key=api_key, transport='rest')
-        
-        # Inicializamos el modelo Gemini 1.5 Flash
-        model = genai.GenerativeModel('gemini-1.5-flash')
-
-        st.info("Conexión establecida. Sistema listo para generar reportes.")
-        
-        if st.button('Generar Reporte de Inteligencia'):
-            with st.spinner('Procesando datos técnicos del sector energético...'):
-                # Prompt estructurado para consultoría técnica
-                prompt = """
-                Actúa como el Ingeniero Jefe de Inteligencia de ElectroEnergy Group LLC. 
-                Proporciona un reporte ejecutivo sobre el sector energético en Venezuela hoy.
-                Analiza puntos críticos en:
-                1. Operaciones de Chevron y PDVSA.
-                2. Estado actual del SEN (Generación y Transmisión).
-                3. Actualizaciones de licencias OFAC.
-                """
+    st.info("Conexión configurada mediante protocolo REST v1.")
+    
+    if st.button('Generar Reporte de Inteligencia'):
+        with st.spinner('Analizando datos de Chevron, PDVSA y el SEN...'):
+            # URL forzada a v1 estable
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+            
+            headers = {'Content-Type': 'application/json'}
+            
+            payload = {
+                "contents": [{
+                    "parts": [{
+                        "text": "Actúa como Ingeniero Jefe de ElectroEnergy. Reporte técnico hoy sobre Chevron, PDVSA y el SEN en Venezuela."
+                    }]
+                }]
+            }
+            
+            try:
+                response = requests.post(url, headers=headers, json=payload)
+                data = response.json()
                 
-                response = model.generate_content(prompt)
-                
-                st.markdown("---")
-                st.markdown("### 📊 Reporte Consolidado de Inteligencia")
-                st.markdown(response.text)
-                st.success("Análisis completado exitosamente.")
-                
-    except Exception as e:
-        st.error(f"Ajuste técnico requerido: {e}")
+                if response.status_code == 200:
+                    texto_ia = data['candidates'][0]['content']['parts'][0]['text']
+                    st.markdown("---")
+                    st.markdown("### 📊 Reporte Consolidado de Inteligencia")
+                    st.markdown(texto_ia)
+                    st.success("Análisis completado con éxito.")
+                else:
+                    st.error(f"Error de la API ({response.status_code}): {data.get('error', {}).get('message', 'Error desconocido')}")
+            
+            except Exception as e:
+                st.error(f"Fallo en la comunicación: {e}")
 else:
-    st.warning("⚠️ Ingrese su API Key en el panel lateral para activar el monitor.")
+    st.warning("⚠️ Ingrese su API Key en el panel lateral.")
 
 st.markdown("---")
-st.caption("ElectroEnergy Group LLC © 2026 | División de Inteligencia y Consultoría Energética")
+st.caption("ElectroEnergy Group LLC © 2026 | División de Consultoría")
