@@ -4,6 +4,7 @@ import google.generativeai as genai
 # Configuración de Identidad Corporativa - ElectroEnergy Group LLC
 st.set_page_config(page_title="ElectroEnergy Intelligence", layout="wide", page_icon="⚡")
 
+# Estilo visual profesional
 st.markdown("""
     <style>
     .main-title { font-size: 36px; font-weight: bold; color: #1E3A8A; }
@@ -20,33 +21,37 @@ api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password")
 
 if api_key:
     try:
-        # CONFIGURACIÓN CRÍTICA: Forzamos la versión v1 para evitar el error 404
-        genai.configure(api_key=api_key, transport='rest') 
+        # SOLUCIÓN AL ERROR 404: Forzamos el uso de la API v1 estable y transporte REST
+        genai.configure(api_key=api_key, transport='rest')
         
-        # Usamos el identificador del modelo compatible con v1
+        # Inicializamos el modelo Gemini 1.5 Flash
         model = genai.GenerativeModel('gemini-1.5-flash')
 
-        st.info("Sistema listo para generar reportes técnicos.")
+        st.info("Conexión establecida. Sistema listo para generar reportes.")
         
         if st.button('Generar Reporte de Inteligencia'):
-            with st.spinner('Analizando datos técnicos del sector...'):
+            with st.spinner('Procesando datos técnicos del sector energético...'):
+                # Prompt estructurado para consultoría técnica
                 prompt = """
                 Actúa como el Ingeniero Jefe de Inteligencia de ElectroEnergy Group LLC. 
-                Proporciona un reporte técnico ejecutivo sobre la situación energética en Venezuela hoy.
-                Analiza: Chevron, PDVSA, estado del SEN y licencias OFAC.
+                Proporciona un reporte ejecutivo sobre el sector energético en Venezuela hoy.
+                Analiza puntos críticos en:
+                1. Operaciones de Chevron y PDVSA.
+                2. Estado actual del SEN (Generación y Transmisión).
+                3. Actualizaciones de licencias OFAC.
                 """
-                # Forzamos la generación a través del modelo validado
+                
                 response = model.generate_content(prompt)
                 
                 st.markdown("---")
                 st.markdown("### 📊 Reporte Consolidado de Inteligencia")
                 st.markdown(response.text)
-                st.success("Reporte generado exitosamente.")
+                st.success("Análisis completado exitosamente.")
                 
     except Exception as e:
-        st.error(f"Error técnico detectado: {e}")
+        st.error(f"Ajuste técnico requerido: {e}")
 else:
-    st.warning("⚠️ Esperando API Key en la barra lateral.")
+    st.warning("⚠️ Ingrese su API Key en el panel lateral para activar el monitor.")
 
 st.markdown("---")
 st.caption("ElectroEnergy Group LLC © 2026 | División de Inteligencia y Consultoría Energética")
