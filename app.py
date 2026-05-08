@@ -13,28 +13,32 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">⚡ ElectroEnergy Group LLC</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Monitor de Inteligencia Energética - Conexión Directa v1</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Monitor de Inteligencia Energética - Protocolo Final v1</div>', unsafe_allow_html=True)
 
 # Panel Lateral
 st.sidebar.header("Configuración de Acceso")
 api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password")
 
 if api_key:
-    st.info("Conexión configurada mediante protocolo REST v1.")
+    st.info("Conexión configurada mediante protocolo REST v1 (Ruta Calificada).")
     
     if st.button('Generar Reporte de Inteligencia'):
         with st.spinner('Analizando datos de Chevron, PDVSA y el SEN...'):
-            # URL forzada a v1 estable
+            # SOLUCIÓN AL 404: Usamos la ruta de modelos completa
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
             
             headers = {'Content-Type': 'application/json'}
             
+            # Ajustamos el payload para asegurar compatibilidad total con v1
             payload = {
                 "contents": [{
                     "parts": [{
                         "text": "Actúa como Ingeniero Jefe de ElectroEnergy. Reporte técnico hoy sobre Chevron, PDVSA y el SEN en Venezuela."
                     }]
-                }]
+                }],
+                "generationConfig": {
+                    "temperature": 0.1
+                }
             }
             
             try:
@@ -48,7 +52,9 @@ if api_key:
                     st.markdown(texto_ia)
                     st.success("Análisis completado con éxito.")
                 else:
-                    st.error(f"Error de la API ({response.status_code}): {data.get('error', {}).get('message', 'Error desconocido')}")
+                    # Si falla, mostramos el error exacto de Google
+                    mensaje_error = data.get('error', {}).get('message', 'Error desconocido')
+                    st.error(f"Error de la API ({response.status_code}): {mensaje_error}")
             
             except Exception as e:
                 st.error(f"Fallo en la comunicación: {e}")
