@@ -5,20 +5,20 @@ require('dotenv').config();
 
 const app = express();
 
-// IMPORTANTE: cors() permite que tu web en GitHub se conecte al servidor
+// Configuración de seguridad para permitir conexión desde el frontend
 app.use(cors());
 app.use(express.json());
 
-// Render usa el puerto 10000 por defecto
+// Puerto configurado para Render (10000)
 const PORT = process.env.PORT || 10000;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-// 1. Ruta de prueba (Si ves esto en el navegador, el servidor está VIVO)
+// Ruta raíz para verificar que el servidor de ElectroEnergy está activo
 app.get('/', (req, res) => {
     res.send('🚀 Servidor de ElectroEnergy Group LLC Operativo');
 });
 
-// 2. Ruta de Inteligencia (Cambiamos /api/news por /api/intelligence para que coincida)
+// Ruta principal de inteligencia energética
 app.get('/api/intelligence', async (req, res) => {
     try {
         const currentDate = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -32,22 +32,22 @@ app.get('/api/intelligence', async (req, res) => {
           "ai_summary": "Resumen técnico de 3 líneas."
         }`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+        // URL actualizada a v1 para evitar el error 404
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
         
         const response = await axios.post(geminiUrl, {
-            contents: [{ parts: [{ text: "Genera reporte energético para Venezuela hoy." }] }],
+            contents: [{ parts: [{ text: "Genera reporte energético detallado para Venezuela hoy." }] }],
             systemInstruction: { parts: [{ text: systemPrompt }] },
-            tools: [{ "google_search": {} }],
             generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
         });
 
-        // Enviamos la respuesta de la IA al frontend
+        // Envío de datos procesados al monitor
         res.json(JSON.parse(response.data.candidates[0].content.parts[0].text));
         
     } catch (error) {
-        console.error("Error detallado:", error.message);
+        console.error("Error en el servidor:", error.message);
         res.status(500).json({ error: "Error al sincronizar inteligencia energética." });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Servidor de ElectroEnergy corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
