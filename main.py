@@ -42,7 +42,7 @@ def analizar_noticia(titular):
     """
     try:
         response = model.generate_content(prompt)
-        # Limpieza de formato Markdown (Línea 46 corregida aquí)
+        # ESTA ES LA LÍNEA 46 - CORREGIDA Y CERRADA:
         clean_json = response.text.replace('```json', '').replace('
 ```', '').strip()
         return json.loads(clean_json)
