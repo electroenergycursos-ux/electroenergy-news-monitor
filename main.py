@@ -42,7 +42,7 @@ def analizar_noticia(titular):
     """
     try:
         response = model.generate_content(prompt)
-        # Limpieza de formato Markdown y saltos de línea (CORREGIDO)
+        # Limpieza de formato Markdown (Línea 46 corregida aquí)
         clean_json = response.text.replace('```json', '').replace('
 ```', '').strip()
         return json.loads(clean_json)
@@ -72,7 +72,7 @@ def update_monitor():
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
-        # Crear la tabla si no existe automáticamente
+        # Crear la tabla automáticamente si no existe
         cur.execute("""
             CREATE TABLE IF NOT EXISTS energy_intel (
                 id SERIAL PRIMARY KEY,
@@ -87,14 +87,12 @@ def update_monitor():
 
         for url in feeds:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:10]: # Analizamos las 10 más recientes
-                # Filtro de relevancia técnica
+            for entry in feed.entries[:10]:
+                # Filtro de relevancia técnica (Venezuela/PDVSA/Guri)
                 if any(x in entry.title.upper() for x in ["VENEZUELA", "PDVSA", "OIL", "CITGO", "GURI", "GAS"]):
                     
-                    # Pasar por la IA
                     analisis = analizar_noticia(entry.title)
                     
-                    # Guardar en Supabase
                     cur.execute("""
                         INSERT INTO energy_intel (title, category, impact_score, summary, source_url)
                         VALUES (%s, %s, %s, %s, %s)
@@ -124,7 +122,6 @@ def get_intel():
         cur.execute("SELECT title, category, impact_score, summary, source_url, created_at FROM energy_intel ORDER BY created_at DESC LIMIT 20")
         rows = cur.fetchall()
         
-        # Formatear la respuesta para el Dashboard
         data = []
         for row in rows:
             data.append({
