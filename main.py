@@ -42,7 +42,7 @@ def analizar_noticia(titular):
     """
     try:
         response = model.generate_content(prompt)
-        # Limpieza de formato Markdown en la respuesta de la IA
+        # Limpieza de formato Markdown y saltos de línea (CORREGIDO)
         clean_json = response.text.replace('```json', '').replace('
 ```', '').strip()
         return json.loads(clean_json)
@@ -72,16 +72,29 @@ def update_monitor():
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
+        # Crear la tabla si no existe automáticamente
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS energy_intel (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                category TEXT,
+                impact_score INTEGER,
+                summary TEXT,
+                source_url TEXT UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         for url in feeds:
             feed = feedparser.parse(url)
             for entry in feed.entries[:10]: # Analizamos las 10 más recientes
-                # Filtro de relevancia técnica (Venezuela/PDVSA/Guri)
+                # Filtro de relevancia técnica
                 if any(x in entry.title.upper() for x in ["VENEZUELA", "PDVSA", "OIL", "CITGO", "GURI", "GAS"]):
                     
                     # Pasar por la IA
                     analisis = analizar_noticia(entry.title)
                     
-                    # Guardar en Supabase (Evita duplicados por URL)
+                    # Guardar en Supabase
                     cur.execute("""
                         INSERT INTO energy_intel (title, category, impact_score, summary, source_url)
                         VALUES (%s, %s, %s, %s, %s)
@@ -105,14 +118,26 @@ def update_monitor():
 
 @app.get("/get-intel")
 def get_intel():
-    # Este endpoint servirá los datos a tu Dashboard de React
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
-        cur.execute("SELECT * FROM energy_intel ORDER BY created_at DESC LIMIT 20")
+        cur.execute("SELECT title, category, impact_score, summary, source_url, created_at FROM energy_intel ORDER BY created_at DESC LIMIT 20")
         rows = cur.fetchall()
+        
+        # Formatear la respuesta para el Dashboard
+        data = []
+        for row in rows:
+            data.append({
+                "title": row[0],
+                "category": row[1],
+                "impact": row[2],
+                "summary": row[3],
+                "url": row[4],
+                "date": row[5]
+            })
+            
         cur.close()
         conn.close()
-        return {"data": rows}
+        return {"data": data}
     except Exception as e:
         return {"error": str(e)}
